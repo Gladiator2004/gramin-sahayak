@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import Verify from "./pages/Verify";
 import About from "./pages/About";
+import NewsDetail from "./pages/NewsDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Navbar />
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/news/:id" element={<NewsDetail />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/verify" element={<Verify />} />
             <Route path="/about" element={<About />} />
