@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, MessageCircle, ShieldCheck, Info } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { languageNames, type Language } from "@/i18n/translations";
 import type { TranslationKey } from "@/i18n/translations";
 
 const navItems: { path: string; labelKey: TranslationKey; icon: typeof Home }[] = [
@@ -25,20 +26,21 @@ const Navbar = () => {
               {t("appTitle")}
             </h1>
           </Link>
-          {/* Language selector — persisted in localStorage */}
-          {/* Bhashini API integration here later */}
           <select
             value={language}
-            onChange={(e) => setLanguage(e.target.value as "en" | "hi")}
+            onChange={(e) => setLanguage(e.target.value as Language)}
             className="rounded-md bg-primary-foreground/20 px-2 py-1 text-sm font-semibold text-primary-foreground border-none outline-none cursor-pointer"
           >
-            <option value="en">English</option>
-            <option value="hi">हिन्दी</option>
+            {(Object.keys(languageNames) as Language[]).map((code) => (
+              <option key={code} value={code}>
+                {languageNames[code]}
+              </option>
+            ))}
           </select>
         </div>
       </header>
 
-      {/* Bottom tab bar for mobile */}
+      {/* Bottom tab bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
         <div className="flex items-center justify-around py-1">
           {navItems.map(({ path, labelKey, icon: Icon }) => {

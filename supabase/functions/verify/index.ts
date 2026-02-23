@@ -85,7 +85,7 @@ Rules:
 - Consider: Does it mention a real government scheme? Are the numbers realistic? Is there a verifiable source?
 - Be especially careful about: fake government announcements, WhatsApp forwards, money scams
 - Keep explanation under 100 words
-- If the text is in Hindi, respond in Hindi`,
+- Respond in the same language as the input text. If Hindi, respond in Hindi. If Punjabi, respond in Punjabi. If Bengali, respond in Bengali. If Tamil, respond in Tamil. Otherwise respond in English.`,
           },
           { role: "user", content: `Analyze this message:\n\n"${text}"` },
         ],

@@ -5,14 +5,38 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import Navbar from "@/components/Navbar";
+import LanguageSelector from "@/components/LanguageSelector";
 import Home from "./pages/Home";
 import Chat from "./pages/Chat";
 import Verify from "./pages/Verify";
 import About from "./pages/About";
 import NewsDetail from "./pages/NewsDetail";
 import NotFound from "./pages/NotFound";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 const queryClient = new QueryClient();
+
+const AppContent = () => {
+  const { isFirstLaunch } = useLanguage();
+
+  if (isFirstLaunch) {
+    return <LanguageSelector />;
+  }
+
+  return (
+    <>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/news/:id" element={<NewsDetail />} />
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/verify" element={<Verify />} />
+        <Route path="/about" element={<About />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -21,15 +45,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <LanguageProvider>
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/news/:id" element={<NewsDetail />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/verify" element={<Verify />} />
-            <Route path="/about" element={<About />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppContent />
         </LanguageProvider>
       </BrowserRouter>
     </TooltipProvider>
