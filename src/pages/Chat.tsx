@@ -186,10 +186,16 @@ const Chat = () => {
     }
   };
 
+  const quickQueries: Record<string, Record<string, string>> = {
+    quickWage: { en: "Tell me about wages", hi: "मजदूरी के बारे में बताएं", pa: "ਮਜ਼ਦੂਰੀ ਬਾਰੇ ਦੱਸੋ", bn: "মজুরি সম্পর্কে বলুন", ta: "கூலி பற்றி சொல்லுங்கள்" },
+    quickFarming: { en: "I need farming help", hi: "खेती में मदद चाहिए", pa: "ਖੇਤੀ ਵਿੱਚ ਮਦਦ ਚਾਹੀਦੀ", bn: "চাষে সাহায্য চাই", ta: "விவசாய உதவி தேவை" },
+    quickRation: { en: "How to get ration card", hi: "राशन कार्ड कैसे बनवाएं", pa: "ਰਾਸ਼ਨ ਕਾਰਡ ਕਿਵੇਂ ਬਣਵਾਈਏ", bn: "রেশন কার্ড কীভাবে পাবো", ta: "ரேஷன் அட்டை எப்படி பெறுவது" },
+  };
+
   const quickActions = [
-    { labelKey: "quickWage" as const, query: language === "hi" ? "मजदूरी के बारे में बताएं" : "Tell me about wages" },
-    { labelKey: "quickFarming" as const, query: language === "hi" ? "खेती में मदद चाहिए" : "I need farming help" },
-    { labelKey: "quickRation" as const, query: language === "hi" ? "राशन कार्ड कैसे बनवाएं" : "How to get ration card" },
+    { labelKey: "quickWage" as const, query: quickQueries.quickWage[language] || quickQueries.quickWage.en },
+    { labelKey: "quickFarming" as const, query: quickQueries.quickFarming[language] || quickQueries.quickFarming.en },
+    { labelKey: "quickRation" as const, query: quickQueries.quickRation[language] || quickQueries.quickRation.en },
   ];
 
   return (

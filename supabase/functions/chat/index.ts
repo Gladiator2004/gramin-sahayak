@@ -34,9 +34,14 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const intent = detectIntent(message);
-    const langInstruction = language === "hi"
-      ? "Always respond in Hindi (Devanagari script). Use simple Hindi that a village person can understand."
-      : "Respond in simple English. Use short sentences. Avoid technical words.";
+    const langMap: Record<string, string> = {
+      hi: "Always respond in Hindi (Devanagari script). Use simple Hindi that a village person can understand.",
+      pa: "Always respond in Punjabi (Gurmukhi script). Use simple Punjabi that a village person can understand.",
+      bn: "Always respond in Bengali (Bengali script). Use simple Bengali that a village person can understand.",
+      ta: "Always respond in Tamil (Tamil script). Use simple Tamil that a village person can understand.",
+      en: "Respond in simple English. Use short sentences. Avoid technical words.",
+    };
+    const langInstruction = langMap[language] || langMap.en;
 
     const systemPrompt = `You are Gramin Sahayak (ग्रामीण सहायक), a rural Indian digital assistant.
 

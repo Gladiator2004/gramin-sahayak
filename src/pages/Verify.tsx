@@ -74,22 +74,19 @@ const Verify = () => {
       bg: "bg-primary/10 border-primary",
       textColor: "text-primary",
       icon: <CheckCircle className="h-16 w-16 text-primary" />,
-      label: "✅ Likely True",
-      labelHi: "✅ संभवतः सच",
+      labelKey: "verifyLikelyTrue" as const,
     },
     false: {
       bg: "bg-destructive/10 border-destructive",
       textColor: "text-destructive",
       icon: <XCircle className="h-16 w-16 text-destructive" />,
-      label: "❌ Likely False",
-      labelHi: "❌ संभवतः झूठ",
+      labelKey: "verifyLikelyFalse" as const,
     },
     uncertain: {
       bg: "bg-amber-100/50 border-amber-500 dark:bg-amber-900/20",
       textColor: "text-amber-600 dark:text-amber-400",
       icon: <AlertTriangle className="h-16 w-16 text-amber-500" />,
-      label: "⚠️ Not Sure",
-      labelHi: "⚠️ पक्का नहीं",
+      labelKey: "verifyNotSure" as const,
     },
   };
 
@@ -129,7 +126,7 @@ const Verify = () => {
             ) : (
               <Search className="h-5 w-5" />
             )}
-            {isLoading ? "Analyzing..." : t("verifyButton")}
+            {isLoading ? t("verifyChecking") : t("verifyButton")}
           </button>
         </div>
 
@@ -147,13 +144,13 @@ const Verify = () => {
               {t("verifyResult")}
             </h3>
             <p className={`text-lg font-bold mb-2 ${verdictConfig[result.verdict].textColor}`}>
-              {verdictConfig[result.verdict].label}
+              {t(verdictConfig[result.verdict].labelKey)}
             </p>
 
             {/* Confidence bar */}
             <div className="mb-4">
               <p className="text-sm text-muted-foreground mb-1">
-                Confidence: {result.confidence}%
+                {t("verifyConfidence")}: {result.confidence}%
               </p>
               <Progress value={result.confidence} className="h-3" />
             </div>
@@ -182,9 +179,7 @@ const Verify = () => {
         {/* Advice */}
         {result && (
           <div className="rounded-xl bg-muted p-4 text-sm text-muted-foreground text-center animate-fade-in">
-            <p className="font-semibold">
-              💡 Always verify important news from official government websites before sharing.
-            </p>
+            <p className="font-semibold">💡 {t("verifyAdvice")}</p>
           </div>
         )}
 
@@ -192,7 +187,7 @@ const Verify = () => {
         {history.length > 1 && (
           <div className="space-y-2">
             <h3 className="flex items-center gap-2 text-sm font-bold text-foreground">
-              <History className="h-4 w-4" /> Recent Checks
+              <History className="h-4 w-4" /> {t("verifyRecentChecks")}
             </h3>
             {history.slice(1).map((h, i) => (
               <div
@@ -200,7 +195,7 @@ const Verify = () => {
                 className={`rounded-lg border p-3 text-sm ${verdictConfig[h.verdict].bg}`}
               >
                 <span className={`font-bold ${verdictConfig[h.verdict].textColor}`}>
-                  {verdictConfig[h.verdict].label}
+                  {t(verdictConfig[h.verdict].labelKey)}
                 </span>
                 <span className="text-muted-foreground ml-2">({h.confidence}%)</span>
               </div>

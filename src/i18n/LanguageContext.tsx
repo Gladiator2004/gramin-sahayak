@@ -5,21 +5,30 @@ interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: TranslationKey) => string;
+  isFirstLaunch: boolean;
+  markLanguageChosen: () => void;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-// Persist selected language in localStorage
 function getInitialLanguage(): Language {
   try {
     const stored = localStorage.getItem("gs-lang");
-    if (stored === "hi" || stored === "en") return stored;
+    if (stored === "hi" || stored === "en" || stored === "pa" || stored === "bn" || stored === "ta") return stored;
   } catch {}
-  return "en";
+  return "hi"; // Default to Hindi
+}
+
+function hasChosenLanguage(): boolean {
+  try {
+    return localStorage.getItem("gs-lang-chosen") === "true";
+  } catch {}
+  return false;
 }
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguageState] = useState<Language>(getInitialLanguage);
+  const [isFirstLaunch, setIsFirstLaunch] = useState(!hasChosenLanguage());
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -28,22 +37,28 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     } catch {}
   }, []);
 
-  // Translation lookup function
+  const markLanguageChosen = useCallback(() => {
+    setIsFirstLaunch(false);
+    try {
+      localStorage.setItem("gs-lang-chosen", "true");
+    } catch {}
+  }, []);
+
   const t = useCallback(
     (key: TranslationKey): string => {
-      return translations[language][key] ?? translations.en[key] ?? key;
+      const langTranslations = translations[language] as Record<string, string>;
+      return langTranslations[key] ?? (translations.en as Record<string, string>)[key] ?? key;
     },
     [language]
   );
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isFirstLaunch, markLanguageChosen }}>
       {children}
     </LanguageContext.Provider>
   );
 };
 
-// Hook for consuming translation context
 export const useLanguage = () => {
   const ctx = useContext(LanguageContext);
   if (!ctx) throw new Error("useLanguage must be used within LanguageProvider");
