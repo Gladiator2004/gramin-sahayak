@@ -2,9 +2,8 @@
  * BulletinCard — Scannable card for government scheme updates
  * Shows title, one benefit line, source, and read more CTA
  * Supports "New" and "Expiring Soon" badges
- * Works with both legacy NewsItem and new BulletinItem shapes
  */
-import type { BulletinItem } from "./BulletinBoard";
+import { type NewsItem, getCategoryFallbackImage } from "@/data/api";
 import { Sprout, HardHat, Globe, ImageOff, Building2, ArrowRight, Clock, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -16,37 +15,26 @@ const categoryConfig = {
   General: { icon: Globe, colorClass: "bg-general text-accent-foreground" },
 };
 
-const categoryFallbackImages: Record<string, string> = {
-  Farmer: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=600&h=400&fit=crop",
-  Worker: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&h=400&fit=crop",
-  General: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=600&h=400&fit=crop",
-};
-
 interface BulletinCardProps {
-  item: BulletinItem;
+  item: NewsItem;
   index: number;
   onClick: () => void;
 }
 
 const BulletinCard = ({ item, index, onClick }: BulletinCardProps) => {
-  const config = categoryConfig[item.category] || categoryConfig.General;
+  const config = categoryConfig[item.category];
   const Icon = config.icon;
   const [imgError, setImgError] = useState(false);
   const { t } = useLanguage();
 
-  const imageUrl = imgError
-    ? categoryFallbackImages[item.category]
-    : (item.image_url || categoryFallbackImages[item.category]);
+  const imageUrl = imgError ? getCategoryFallbackImage(item.category) : item.imageUrl;
 
-  // Determine badges based on publish_date
+  // Determine badges based on publishedAt
   const daysSincePublished = Math.floor(
-    (Date.now() - new Date(item.publish_date).getTime()) / (1000 * 60 * 60 * 24)
+    (Date.now() - new Date(item.publishedAt).getTime()) / (1000 * 60 * 60 * 24)
   );
   const isNew = daysSincePublished <= 7;
-  const isExpiring = item.is_expiring || daysSincePublished >= 45;
-
-  // First line of description as benefit preview
-  const benefitPreview = item.description.split(".")[0] + ".";
+  const isExpiring = daysSincePublished >= 20;
 
   return (
     <article
@@ -56,18 +44,18 @@ const BulletinCard = ({ item, index, onClick }: BulletinCardProps) => {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onClick()}
-      aria-label={item.title}
+      aria-label={t(item.titleKey as TranslationKey)}
     >
       {/* Image */}
       <div className="relative h-[120px] bg-muted overflow-hidden">
-        {imgError && !categoryFallbackImages[item.category] ? (
+        {imgError && !getCategoryFallbackImage(item.category) ? (
           <div className="flex items-center justify-center h-full">
             <ImageOff className="h-8 w-8 text-muted-foreground/40" />
           </div>
         ) : (
           <img
             src={imageUrl}
-            alt={item.title}
+            alt={t(item.titleKey as TranslationKey)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
             onError={() => setImgError(true)}
@@ -102,18 +90,20 @@ const BulletinCard = ({ item, index, onClick }: BulletinCardProps) => {
       {/* Content */}
       <div className="p-4 space-y-2">
         <h3 className="text-base font-bold text-card-foreground leading-tight line-clamp-2 min-h-[2.75rem]">
-          {item.title}
+          {t(item.titleKey as TranslationKey)}
         </h3>
 
         {/* One benefit line */}
-        <p className="text-sm text-primary font-medium line-clamp-1">
-          {benefitPreview}
-        </p>
+        {item.benefitsKeys[0] && (
+          <p className="text-sm text-primary font-medium line-clamp-1">
+            {t(item.benefitsKeys[0] as TranslationKey)}
+          </p>
+        )}
 
         {/* Source */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Building2 className="h-3.5 w-3.5" />
-          <span className="truncate">{item.source}</span>
+          <span className="truncate">{t(item.sourceKey as TranslationKey)}</span>
         </div>
 
         {/* Read More CTA */}
