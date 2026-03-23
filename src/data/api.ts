@@ -1,6 +1,7 @@
 // Data and API functions for Gramin Sahayak
 // Real API integration ready — currently using verified government scheme data
 // Backend proxy endpoint: GET /api/news (FastAPI/Express — connect when ready)
+import { extraNewsData } from "./extraNews";
 
 export interface NewsItem {
   id: number;
