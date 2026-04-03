@@ -9,6 +9,7 @@ import SchemeDetailModal from "./SchemeDetailModal";
 import { BulletinSkeletonGrid } from "./BulletinSkeleton";
 import { Newspaper, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { TranslationKey } from "@/i18n/translations";
 
 type CategoryFilter = "All" | "Farmer" | "Worker" | "General";
