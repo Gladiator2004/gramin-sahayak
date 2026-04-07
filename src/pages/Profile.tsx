@@ -1,17 +1,35 @@
 /**
- * Profile — Modern account center with card-based layout
- * Shows profile info, edit capabilities, and actions
+ * Profile — Account center with accessibility settings (voice, theme)
  */
 import { useState } from "react";
 import {
   User, MapPin, Globe, Calendar, UserCheck,
-  Edit3, RotateCcw, Trash2, ChevronRight, Save, X
+  Edit3, RotateCcw, Save, X, Volume2, Palette, ChevronRight,
 } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { TranslationKey } from "@/i18n/translations";
 import { useToast } from "@/hooks/use-toast";
 import GraminLogo from "@/components/GraminLogo";
+
+/** Theme management */
+const themes = [
+  { id: "default", labelKey: "themeDefault", color: "bg-primary" },
+  { id: "pink", labelKey: "themePink", color: "bg-[hsl(340,80%,55%)]" },
+  { id: "highcontrast", labelKey: "themeHighContrast", color: "bg-foreground" },
+];
+
+function applyTheme(themeId: string) {
+  const root = document.documentElement;
+  root.classList.remove("theme-pink", "theme-highcontrast");
+  if (themeId === "pink") root.classList.add("theme-pink");
+  if (themeId === "highcontrast") root.classList.add("theme-highcontrast");
+  localStorage.setItem("gs-theme", themeId);
+}
+
+function getStoredTheme(): string {
+  return localStorage.getItem("gs-theme") || "default";
+}
 
 const Profile = () => {
   const { t, language } = useLanguage();
@@ -23,6 +41,9 @@ const Profile = () => {
   const [editAgeGroup, setEditAgeGroup] = useState(profile?.age_group || "");
   const [editGender, setEditGender] = useState(profile?.gender || "");
 
+  const [currentTheme, setCurrentTheme] = useState(getStoredTheme);
+  const [voiceGender, setVoiceGender] = useState(() => localStorage.getItem("gs-voice-gender") || "female");
+
   const roleLabels: Record<string, Record<string, string>> = {
     farmer: { en: "Farmer", hi: "किसान", pa: "ਕਿਸਾਨ", bn: "কৃষক", ta: "விவசாயி" },
     worker: { en: "Worker", hi: "मजदूर", pa: "ਮਜ਼ਦੂਰ", bn: "শ্রমিক", ta: "தொழிலாளி" },
@@ -30,12 +51,7 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    await updateProfile({
-      name: editName || null,
-      district: editDistrict || null,
-      age_group: editAgeGroup || null,
-      gender: editGender || null,
-    });
+    await updateProfile({ name: editName || null, district: editDistrict || null, age_group: editAgeGroup || null, gender: editGender || null });
     setIsEditing(false);
     toast({ title: t("profileSaved" as TranslationKey), duration: 2000 });
   };
@@ -44,6 +60,16 @@ const Profile = () => {
     resetProfile();
     toast({ title: t("profileReset" as TranslationKey), duration: 2000 });
     window.location.reload();
+  };
+
+  const handleThemeChange = (themeId: string) => {
+    setCurrentTheme(themeId);
+    applyTheme(themeId);
+  };
+
+  const handleVoiceGender = (gender: string) => {
+    setVoiceGender(gender);
+    localStorage.setItem("gs-voice-gender", gender);
   };
 
   if (!profile) return null;
@@ -67,12 +93,8 @@ const Profile = () => {
             <User className="h-10 w-10" />
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-bold">
-              {profile.name ? `${profile.name} ji` : t("profileTitle" as TranslationKey)}
-            </h2>
-            <p className="text-sm opacity-80">
-              {roleLabels[profile.role]?.[language] || profile.role} • {profile.state || "India"}
-            </p>
+            <h2 className="text-xl font-bold">{profile.name ? `${profile.name} ji` : t("profileTitle" as TranslationKey)}</h2>
+            <p className="text-sm opacity-80">{roleLabels[profile.role]?.[language] || profile.role} • {profile.state || "India"}</p>
           </div>
         </div>
       </div>
@@ -95,9 +117,9 @@ const Profile = () => {
 
           {!isEditing ? (
             <div className="divide-y divide-border">
-              {infoItems.map(({ icon: Icon, label, value }, i) => (
+              {infoItems.map(({ icon: InfoIcon, label, value }, i) => (
                 <div key={i} className="flex items-center gap-3 px-5 py-3.5">
-                  <Icon className="h-5 w-5 text-primary shrink-0" />
+                  <InfoIcon className="h-5 w-5 text-primary shrink-0" />
                   <div className="flex-1">
                     <p className="text-xs text-muted-foreground">{label}</p>
                     <p className="text-sm font-semibold text-foreground">{value}</p>
@@ -109,29 +131,18 @@ const Profile = () => {
             <div className="p-5 space-y-4">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">{t("profileName" as TranslationKey)}</label>
-                <input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  placeholder={t("profileNamePlaceholder" as TranslationKey)}
-                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder={t("profileNamePlaceholder" as TranslationKey)}
+                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">{t("profileDistrict" as TranslationKey)}</label>
-                <input
-                  value={editDistrict}
-                  onChange={(e) => setEditDistrict(e.target.value)}
-                  placeholder={t("profileDistrictPlaceholder" as TranslationKey)}
-                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+                <input value={editDistrict} onChange={(e) => setEditDistrict(e.target.value)} placeholder={t("profileDistrictPlaceholder" as TranslationKey)}
+                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">{t("profileAge" as TranslationKey)}</label>
-                <select
-                  value={editAgeGroup}
-                  onChange={(e) => setEditAgeGroup(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
+                <select value={editAgeGroup} onChange={(e) => setEditAgeGroup(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                   <option value="">—</option>
                   <option value="<18">&lt;18</option>
                   <option value="18-40">18–40</option>
@@ -140,25 +151,67 @@ const Profile = () => {
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">{t("profileGender" as TranslationKey)}</label>
-                <select
-                  value={editGender}
-                  onChange={(e) => setEditGender(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
+                <select value={editGender} onChange={(e) => setEditGender(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
                   <option value="">—</option>
                   <option value="male">{t("profileMale" as TranslationKey)}</option>
                   <option value="female">{t("profileFemale" as TranslationKey)}</option>
                   <option value="other">{t("profileOther" as TranslationKey)}</option>
                 </select>
               </div>
-              <button
-                onClick={handleSave}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
+              <button onClick={handleSave}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 transition-colors">
                 <Save className="h-4 w-4" /> {t("profileSaveBtn" as TranslationKey)}
               </button>
             </div>
           )}
+        </div>
+
+        {/* Accessibility — Voice Preference */}
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-muted/50">
+            <Volume2 className="h-4 w-4 text-primary" />
+            <h3 className="font-bold text-foreground">{t("accessVoicePref" as TranslationKey)}</h3>
+          </div>
+          <div className="p-4 flex gap-3">
+            {["male", "female"].map((g) => (
+              <button
+                key={g}
+                onClick={() => handleVoiceGender(g)}
+                className={`flex-1 rounded-xl py-3 text-sm font-bold transition-colors ${
+                  voiceGender === g
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {t((g === "male" ? "profileMale" : "profileFemale") as TranslationKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Accessibility — Theme */}
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-muted/50">
+            <Palette className="h-4 w-4 text-primary" />
+            <h3 className="font-bold text-foreground">{t("accessThemePref" as TranslationKey)}</h3>
+          </div>
+          <div className="p-4 flex gap-3">
+            {themes.map((theme) => (
+              <button
+                key={theme.id}
+                onClick={() => handleThemeChange(theme.id)}
+                className={`flex-1 rounded-xl py-3 text-sm font-bold transition-colors border-2 ${
+                  currentTheme === theme.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-transparent bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                <span className={`inline-block h-3 w-3 rounded-full ${theme.color} mr-1.5`} />
+                {t(theme.labelKey as TranslationKey)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Actions */}
@@ -167,14 +220,10 @@ const Profile = () => {
             <h3 className="font-bold text-foreground">{t("profileActions" as TranslationKey)}</h3>
           </div>
           <div className="divide-y divide-border">
-            <button
-              onClick={handleReset}
-              className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-muted/50 transition-colors"
-            >
+            <button onClick={handleReset}
+              className="w-full flex items-center gap-3 px-5 py-3.5 text-left hover:bg-muted/50 transition-colors">
               <RotateCcw className="h-5 w-5 text-muted-foreground" />
-              <span className="flex-1 text-sm font-semibold text-foreground">
-                {t("profileResetOnboarding" as TranslationKey)}
-              </span>
+              <span className="flex-1 text-sm font-semibold text-foreground">{t("profileResetOnboarding" as TranslationKey)}</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
