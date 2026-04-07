@@ -66,6 +66,15 @@ const Chat = () => {
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
+  // Pick up AI prompt from scheme detail "Ask AI" button
+  useEffect(() => {
+    const prompt = sessionStorage.getItem("gs-ai-prompt");
+    if (prompt) {
+      sessionStorage.removeItem("gs-ai-prompt");
+      setTimeout(() => handleSend(prompt), 500);
+    }
+  }, []);
+
   const handleSend = async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || isLoading) return;
