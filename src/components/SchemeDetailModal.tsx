@@ -1,25 +1,20 @@
 /**
- * SchemeDetailModal — Full detail modal for a government scheme
- * Shows image, benefits, eligibility, how to apply, and official link
+ * SchemeDetailModal — Full detail modal with eligibility checker, Ask AI, and Where to Go
  */
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { NewsItem } from "@/data/api";
 import { getCategoryFallbackImage } from "@/data/api";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { TranslationKey } from "@/i18n/translations";
 import {
-  CheckCircle2,
-  User,
-  FileText,
-  ExternalLink,
-  Calendar,
-  Building2,
-  Sprout,
-  HardHat,
-  Globe,
-  ImageOff,
+  CheckCircle2, User, FileText, ExternalLink, Calendar, Building2,
+  Sprout, HardHat, Globe, ImageOff, ClipboardCheck, MessageCircle, MapPin,
 } from "lucide-react";
-import { useState } from "react";
+import EligibilityChecker from "@/components/EligibilityChecker";
+import WhereToGo from "@/components/WhereToGo";
 
 const categoryConfig = {
   Farmer: { icon: Sprout, colorClass: "bg-farmer text-primary-foreground" },
@@ -34,8 +29,11 @@ interface Props {
 }
 
 const SchemeDetailModal = ({ item, open, onClose }: Props) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { profile } = useUserProfile();
+  const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
+  const [showEligibility, setShowEligibility] = useState(false);
 
   if (!item) return null;
 
@@ -44,17 +42,21 @@ const SchemeDetailModal = ({ item, open, onClose }: Props) => {
   const imageUrl = imgError ? getCategoryFallbackImage(item.category) : item.imageUrl;
 
   const formattedDate = new Date(item.publishedAt).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+    day: "numeric", month: "long", year: "numeric",
   });
 
-  /** Render a bullet section */
+  const handleAskAI = () => {
+    const location = profile?.state || "India";
+    const role = profile?.role || "citizen";
+    const prompt = `Explain the scheme "${t(item.titleKey as TranslationKey)}" for a ${role} in ${location} in simple language. What are the benefits and how to apply?`;
+    // Store prompt for chatbot to pick up
+    sessionStorage.setItem("gs-ai-prompt", prompt);
+    onClose();
+    navigate("/chat");
+  };
+
   const renderSection = (
-    titleKey: string,
-    icon: React.ReactNode,
-    keys: string[],
-    bgClass: string
+    titleKey: string, icon: React.ReactNode, keys: string[], bgClass: string
   ) => {
     if (!keys.length) return null;
     return (
@@ -85,17 +87,9 @@ const SchemeDetailModal = ({ item, open, onClose }: Props) => {
               <ImageOff className="h-12 w-12 text-muted-foreground/40" />
             </div>
           ) : (
-            <img
-              src={imageUrl}
-              alt={t(item.titleKey as TranslationKey)}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={() => setImgError(true)}
-            />
+            <img src={imageUrl} alt={t(item.titleKey as TranslationKey)} className="w-full h-full object-cover" loading="lazy" onError={() => setImgError(true)} />
           )}
-          <span
-            className={`absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${config.colorClass} shadow-lg`}
-          >
+          <span className={`absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${config.colorClass} shadow-lg`}>
             <Icon className="h-3.5 w-3.5" />
             {t((`filter${item.category}`) as TranslationKey)}
           </span>
@@ -110,44 +104,47 @@ const SchemeDetailModal = ({ item, open, onClose }: Props) => {
 
           {/* Meta */}
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              {formattedDate}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Building2 className="h-3.5 w-3.5" />
-              {t(item.sourceKey as TranslationKey)}
-            </span>
+            <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formattedDate}</span>
+            <span className="inline-flex items-center gap-1"><Building2 className="h-3.5 w-3.5" />{t(item.sourceKey as TranslationKey)}</span>
           </div>
 
-          {/* Simple summary */}
+          {/* Summary */}
           <div className="rounded-xl bg-primary/10 border border-primary/20 p-4">
-            <p className="text-base font-medium text-foreground leading-relaxed">
-              {t(item.simpleSummaryKey as TranslationKey)}
-            </p>
+            <p className="text-base font-medium text-foreground leading-relaxed">{t(item.simpleSummaryKey as TranslationKey)}</p>
           </div>
+
+          {/* Action Buttons — Help Me Apply + Ask AI */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setShowEligibility(!showEligibility)}
+              className="flex items-center justify-center gap-2 rounded-xl bg-primary/10 border border-primary/30 py-3 text-sm font-bold text-primary hover:bg-primary/20 transition-colors active:scale-[0.98]"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              {t("helpMeApply" as TranslationKey)}
+            </button>
+            <button
+              onClick={handleAskAI}
+              className="flex items-center justify-center gap-2 rounded-xl bg-accent/10 border border-accent/30 py-3 text-sm font-bold text-accent hover:bg-accent/20 transition-colors active:scale-[0.98]"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {t("askAIAbout" as TranslationKey)}
+            </button>
+          </div>
+
+          {/* Eligibility Checker */}
+          {showEligibility && (
+            <EligibilityChecker item={item} onClose={() => setShowEligibility(false)} />
+          )}
 
           {/* Sections */}
           <div className="space-y-3">
-            {renderSection(
-              "benefitsTitle",
-              <CheckCircle2 className="h-5 w-5 text-primary" />,
-              item.benefitsKeys,
-              "bg-muted/50"
-            )}
-            {renderSection(
-              "eligibilityTitle",
-              <User className="h-5 w-5 text-accent" />,
-              item.eligibilityKeys,
-              "bg-accent/10"
-            )}
-            {renderSection(
-              "howToApplyTitle",
-              <FileText className="h-5 w-5 text-secondary" />,
-              item.howToApplyKeys,
-              "bg-secondary/10"
-            )}
+            {renderSection("benefitsTitle", <CheckCircle2 className="h-5 w-5 text-primary" />, item.benefitsKeys, "bg-muted/50")}
+            {renderSection("eligibilityTitle", <User className="h-5 w-5 text-accent" />, item.eligibilityKeys, "bg-accent/10")}
+            {renderSection("howToApplyTitle", <FileText className="h-5 w-5 text-secondary" />, item.howToApplyKeys, "bg-secondary/10")}
           </div>
+
+          {/* Where to Go */}
+          <WhereToGo />
 
           {/* Official link */}
           <a
