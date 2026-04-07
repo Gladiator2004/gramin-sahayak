@@ -1,23 +1,17 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getNewsById } from "@/services/newsService";
 import { getCategoryFallbackImage } from "@/data/api";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { TranslationKey } from "@/i18n/translations";
 import {
-  ArrowLeft,
-  CheckCircle2,
-  User,
-  FileText,
-  ArrowRight,
-  ExternalLink,
-  Calendar,
-  Building2,
-  ImageOff,
-  Sprout,
-  HardHat,
-  Globe,
+  ArrowLeft, CheckCircle2, User, FileText, ExternalLink,
+  Calendar, Building2, ImageOff, Sprout, HardHat, Globe,
+  ClipboardCheck, MessageCircle,
 } from "lucide-react";
-import { useState } from "react";
+import EligibilityChecker from "@/components/EligibilityChecker";
+import WhereToGo from "@/components/WhereToGo";
 
 const categoryConfig = {
   Farmer: { icon: Sprout, colorClass: "bg-farmer text-primary-foreground" },
@@ -28,9 +22,10 @@ const categoryConfig = {
 const NewsDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { profile } = useUserProfile();
   const [imgError, setImgError] = useState(false);
-
+  const [showEligibility, setShowEligibility] = useState(false);
   const item = getNewsById(Number(id));
 
   if (!item) {
@@ -146,26 +141,47 @@ const NewsDetail = () => {
           </p>
         </div>
 
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button
+            onClick={() => setShowEligibility(!showEligibility)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-primary/10 border border-primary/30 py-3 text-sm font-bold text-primary hover:bg-primary/20 transition-colors active:scale-[0.98]"
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            {t("helpMeApply" as TranslationKey)}
+          </button>
+          <button
+            onClick={() => {
+              const location = profile?.state || "India";
+              const role = profile?.role || "citizen";
+              const prompt = `Explain the scheme "${t(item.titleKey as TranslationKey)}" for a ${role} in ${location} in simple language.`;
+              sessionStorage.setItem("gs-ai-prompt", prompt);
+              navigate("/chat");
+            }}
+            className="flex items-center justify-center gap-2 rounded-xl bg-accent/10 border border-accent/30 py-3 text-sm font-bold text-accent hover:bg-accent/20 transition-colors active:scale-[0.98]"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {t("askAIAbout" as TranslationKey)}
+          </button>
+        </div>
+
+        {/* Eligibility Checker */}
+        {showEligibility && (
+          <div className="mb-4">
+            <EligibilityChecker item={item} onClose={() => setShowEligibility(false)} />
+          </div>
+        )}
+
         {/* Bullet sections */}
-        <div className="space-y-3 mb-6">
-          {renderSection(
-            "benefitsTitle",
-            <CheckCircle2 className="h-5 w-5 text-primary" />,
-            item.benefitsKeys,
-            "bg-muted/50"
-          )}
-          {renderSection(
-            "eligibilityTitle",
-            <User className="h-5 w-5 text-accent" />,
-            item.eligibilityKeys,
-            "bg-accent/10"
-          )}
-          {renderSection(
-            "howToApplyTitle",
-            <FileText className="h-5 w-5 text-secondary" />,
-            item.howToApplyKeys,
-            "bg-secondary/10"
-          )}
+        <div className="space-y-3 mb-4">
+          {renderSection("benefitsTitle", <CheckCircle2 className="h-5 w-5 text-primary" />, item.benefitsKeys, "bg-muted/50")}
+          {renderSection("eligibilityTitle", <User className="h-5 w-5 text-accent" />, item.eligibilityKeys, "bg-accent/10")}
+          {renderSection("howToApplyTitle", <FileText className="h-5 w-5 text-secondary" />, item.howToApplyKeys, "bg-secondary/10")}
+        </div>
+
+        {/* Where to Go */}
+        <div className="mb-6">
+          <WhereToGo />
         </div>
 
         {/* Official link */}
