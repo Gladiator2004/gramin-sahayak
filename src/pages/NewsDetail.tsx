@@ -22,9 +22,10 @@ const categoryConfig = {
 const NewsDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { profile } = useUserProfile();
   const [imgError, setImgError] = useState(false);
-
+  const [showEligibility, setShowEligibility] = useState(false);
   const item = getNewsById(Number(id));
 
   if (!item) {
