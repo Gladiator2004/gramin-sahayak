@@ -1,6 +1,15 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { translations, type Language, type TranslationKey } from "./translations";
-import { extraTranslationsEn } from "@/data/extraTranslations";
+import { extraTranslationsEn, extraTranslationsHi, extraTranslationsPa, extraTranslationsBn, extraTranslationsTa } from "@/data/extraTranslations";
+
+/** Language-specific extra translation maps */
+const extraTranslationsMap: Record<Language, Record<string, string>> = {
+  en: extraTranslationsEn,
+  hi: extraTranslationsHi,
+  pa: extraTranslationsPa,
+  bn: extraTranslationsBn,
+  ta: extraTranslationsTa,
+};
 
 interface LanguageContextType {
   language: Language;
@@ -48,8 +57,9 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const t = useCallback(
     (key: TranslationKey | string): string => {
       const langTranslations = translations[language] as Record<string, string>;
-      const extra = extraTranslationsEn as Record<string, string>;
-      return langTranslations[key] ?? (translations.en as Record<string, string>)[key] ?? extra[key] ?? key;
+      const extraLang = extraTranslationsMap[language] as Record<string, string>;
+      const extraEn = extraTranslationsEn as Record<string, string>;
+      return langTranslations[key] ?? extraLang[key] ?? (translations.en as Record<string, string>)[key] ?? extraEn[key] ?? key;
     },
     [language]
   );
