@@ -140,7 +140,16 @@ const SchemeDetailModal = ({ item, open, onClose, isDynamic = false }: Props) =>
             <EligibilityChecker item={item} onClose={() => setShowEligibility(false)} />
           )}
 
-          {/* Sections */}
+          {/* For dynamic RSS items: show full description in a card */}
+          {isDynamic && item.descKey && (
+            <div className="rounded-xl p-4 bg-muted/50">
+              <h3 className="text-base font-bold text-foreground mb-2 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                {t("whyThisMatters" as TranslationKey)}
+              </h3>
+              <p className="text-sm text-card-foreground leading-relaxed">{item.descKey}</p>
+            </div>
+          )}
           <div className="space-y-3">
             {renderSection("benefitsTitle", <CheckCircle2 className="h-5 w-5 text-primary" />, item.benefitsKeys, "bg-muted/50")}
             {renderSection("eligibilityTitle", <User className="h-5 w-5 text-accent" />, item.eligibilityKeys, "bg-accent/10")}
