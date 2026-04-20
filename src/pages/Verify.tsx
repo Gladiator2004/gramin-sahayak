@@ -11,6 +11,7 @@ import { useVoice } from "@/hooks/useVoice";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import type { TranslationKey } from "@/i18n/translations";
+import { fetchWithRetry, friendlyErrorMessage, cacheGet, cacheSet, isRateLimited } from "@/lib/network";
 
 interface VerifyResult {
   verdict: "true" | "false" | "uncertain";
