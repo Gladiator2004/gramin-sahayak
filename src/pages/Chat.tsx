@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import ChatMessageBubble from "@/components/ChatMessageBubble";
+import { fetchWithRetry, friendlyErrorMessage, isRateLimited } from "@/lib/network";
 
 interface Message {
   text: string;
@@ -76,8 +77,12 @@ const Chat = () => {
   }, []);
 
   const handleSend = async (overrideText?: string) => {
-    const text = (overrideText ?? input).trim();
+    const text = (overrideText ?? input).trim().slice(0, 2000);
     if (!text || isLoading) return;
+    if (isRateLimited("chat", 12, 60_000)) {
+      toast({ title: "Slow down", description: "Too many messages. Please wait a moment.", variant: "destructive" });
+      return;
+    }
 
     const userMsg: Message = { text, sender: "user" };
     setMessages((prev) => [...prev, userMsg]);
@@ -94,7 +99,7 @@ const Chat = () => {
 
     try {
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
-      const resp = await fetch(CHAT_URL, {
+      const resp = await fetchWithRetry(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -113,6 +118,8 @@ const Chat = () => {
             name: profile.name,
           } : undefined,
         }),
+        timeoutMs: 30000,
+        retries: 1, // streaming endpoint — only retry once
       });
 
       if (!resp.ok) {
@@ -203,7 +210,7 @@ const Chat = () => {
       }
     } catch (e) {
       console.error("Chat error:", e);
-      const errorMessage = e instanceof Error ? e.message : "Something went wrong";
+      const errorMessage = friendlyErrorMessage(e);
       toast({ title: "Error", description: errorMessage, variant: "destructive" });
       setMessages((prev) => [...prev, { text: errorMessage, sender: "bot" }]);
     } finally {
