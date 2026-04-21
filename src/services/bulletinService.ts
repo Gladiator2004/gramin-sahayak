@@ -1,6 +1,6 @@
 /**
  * BulletinService — fetches dynamic bulletin items from the database
- * with localStorage caching and a static fallback for offline/empty states.
+ * with localStorage caching, translation support, and a static fallback.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { fetchNewsPaginated as fetchStaticPaginated, type NewsItem } from "@/data/api";
@@ -15,9 +15,11 @@ export interface BulletinItem {
   source_url: string | null;
   image_url: string | null;
   publish_date: string;
-  // Compatibility fields so existing UI keeps working
   isDynamic: boolean;
   staticItem?: NewsItem;
+  // Translation fields
+  translatedTitle?: string;
+  translatedDescription?: string;
 }
 
 const CACHE_KEY = "bulletin:list";
@@ -26,7 +28,7 @@ const CACHE_TTL = 30 * 60 * 1000; // 30 min
 function mapStaticToBulletin(item: NewsItem): BulletinItem {
   return {
     id: `static:${item.id}`,
-    title: item.titleKey, // resolved via t() in card
+    title: item.titleKey,
     description: item.descKey,
     category: item.category,
     source: item.source,
@@ -63,14 +65,53 @@ async function fetchFromDb(): Promise<BulletinItem[]> {
   }));
 }
 
-// Returns paginated bulletin items: tries DB, then falls back to static.
+// Fetch cached translations for a set of bulletin IDs
+async function fetchTranslations(
+  bulletinIds: string[],
+  language: string
+): Promise<Map<string, { title: string; description: string }>> {
+  const map = new Map<string, { title: string; description: string }>();
+  if (!bulletinIds.length || language === "en") return map;
+
+  const { data } = await supabase
+    .from("bulletin_translations")
+    .select("bulletin_id, title, description")
+    .in("bulletin_id", bulletinIds)
+    .eq("language", language);
+
+  if (data) {
+    for (const row of data) {
+      map.set(row.bulletin_id, { title: row.title, description: row.description });
+    }
+  }
+  return map;
+}
+
+// Fire-and-forget: request translations for dynamic items not yet cached
+export async function requestTranslations(
+  items: Array<{ id: string; title: string; description: string }>,
+  language: string
+): Promise<void> {
+  if (!items.length || language === "en") return;
+  try {
+    await supabase.functions.invoke("translate-bulletin", {
+      body: { items, language },
+    });
+    // Invalidate cache so next read pulls fresh translations
+    try { localStorage.removeItem("gs-cache:" + CACHE_KEY); } catch {}
+  } catch (e) {
+    console.warn("Translation request failed:", e);
+  }
+}
+
+// Returns paginated bulletin items with translations merged
 export async function getBulletinPage(
   page: number,
   perPage: number,
   category?: string,
   userRole?: string,
+  language?: string,
 ): Promise<{ items: BulletinItem[]; total: number; fromCache: boolean }> {
-  // Serve from cache instantly
   const cached = cacheGet<BulletinItem[]>(CACHE_KEY);
   let all: BulletinItem[] = cached || [];
   let fromCache = !!cached;
@@ -78,16 +119,32 @@ export async function getBulletinPage(
   if (!cached) {
     all = await fetchFromDb();
     if (all.length === 0) {
-      // Fallback to bundled static data
       const staticAll = fetchStaticPaginated(1, 1000).items;
       all = staticAll.map(mapStaticToBulletin);
     }
     cacheSet(CACHE_KEY, all, CACHE_TTL);
   } else {
-    // Refresh in background
     fetchFromDb().then((fresh) => {
       if (fresh.length > 0) cacheSet(CACHE_KEY, fresh, CACHE_TTL);
     });
+  }
+
+  // Merge translations for dynamic items
+  if (language && language !== "en") {
+    const dynamicItems = all.filter((i) => i.isDynamic && typeof i.id === "string");
+    const dynamicIds = dynamicItems.map((i) => i.id as string);
+    if (dynamicIds.length > 0) {
+      const translations = await fetchTranslations(dynamicIds, language);
+      all = all.map((item) => {
+        if (item.isDynamic && typeof item.id === "string") {
+          const tr = translations.get(item.id);
+          if (tr) {
+            return { ...item, translatedTitle: tr.title, translatedDescription: tr.description };
+          }
+        }
+        return item;
+      });
+    }
   }
 
   // Filter by category
@@ -116,7 +173,6 @@ export async function getBulletinPage(
 export async function triggerRssRefresh(): Promise<void> {
   try {
     await supabase.functions.invoke("fetch-bulletin-rss", { body: {} });
-    // Invalidate cache so next read pulls fresh data
     try { localStorage.removeItem("gs-cache:" + CACHE_KEY); } catch {}
   } catch (e) {
     console.warn("RSS refresh trigger failed:", e);

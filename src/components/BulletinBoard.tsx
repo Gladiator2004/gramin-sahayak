@@ -1,6 +1,6 @@
 /**
  * BulletinBoard — Government scheme feed with filters, pagination, and detail modal
- * Now backed by live data from bulletin_items DB table + RSS feeds
+ * Now backed by live data from bulletin_items DB table + RSS feeds with translation support
  */
 import { useState, useEffect } from "react";
 import type { NewsItem } from "@/data/api";
@@ -11,20 +11,18 @@ import { Newspaper, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { TranslationKey } from "@/i18n/translations";
-import { getBulletinPage, triggerRssRefresh, type BulletinItem } from "@/services/bulletinService";
+import { getBulletinPage, triggerRssRefresh, requestTranslations, type BulletinItem } from "@/services/bulletinService";
 
 type CategoryFilter = "All" | "Farmer" | "Worker" | "General";
 const ITEMS_PER_PAGE = 9;
 
-// Adapt a BulletinItem (DB) to the NewsItem shape consumed by Card/Modal.
-// For dynamic items, the *Key fields hold raw text (the card/modal honor isDynamic).
 function toNewsItem(b: BulletinItem): NewsItem {
   if (b.staticItem) return b.staticItem;
   return {
     id: typeof b.id === "string" ? Math.abs(b.id.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) : b.id,
-    titleKey: b.title,
-    descKey: b.description,
-    simpleSummaryKey: b.description,
+    titleKey: b.translatedTitle || b.title,
+    descKey: b.translatedDescription || b.description,
+    simpleSummaryKey: b.translatedDescription || b.description,
     category: b.category,
     imageUrl: b.image_url || "",
     publishedAt: b.publish_date,
@@ -45,23 +43,42 @@ const BulletinBoard = () => {
   const [filter, setFilter] = useState<CategoryFilter>("All");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<BulletinItem | null>(null);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { profile } = useUserProfile();
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   const loadPage = async (p: number, cat: CategoryFilter, showSpinner = true) => {
     if (showSpinner) setLoading(true);
-    const result = await getBulletinPage(p, ITEMS_PER_PAGE, cat, profile?.role);
+    const result = await getBulletinPage(p, ITEMS_PER_PAGE, cat, profile?.role, language);
     setItems(result.items);
     setTotal(result.total);
     setLoading(false);
+
+    // Request translations for dynamic items that don't have them yet
+    if (language !== "en") {
+      const untranslated = result.items.filter(
+        (i) => i.isDynamic && !i.staticItem && !i.translatedTitle && typeof i.id === "string"
+      );
+      if (untranslated.length > 0) {
+        requestTranslations(
+          untranslated.map((i) => ({ id: i.id as string, title: i.title, description: i.description })),
+          language
+        ).then(() => {
+          // Reload after translations are cached
+          getBulletinPage(p, ITEMS_PER_PAGE, cat, profile?.role, language).then((fresh) => {
+            setItems(fresh.items);
+            setTotal(fresh.total);
+          });
+        });
+      }
+    }
   };
 
   useEffect(() => {
     loadPage(page, filter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filter]);
+  }, [page, filter, language]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -111,7 +128,6 @@ const BulletinBoard = () => {
         </button>
       </div>
 
-      {/* Filter pills */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
         {filters.map(({ key, labelKey }) => (
           <button
