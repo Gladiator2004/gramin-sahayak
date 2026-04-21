@@ -59,6 +59,41 @@ export type Database = {
         }
         Relationships: []
       }
+      bulletin_translations: {
+        Row: {
+          bulletin_id: string
+          created_at: string
+          description: string
+          id: string
+          language: string
+          title: string
+        }
+        Insert: {
+          bulletin_id: string
+          created_at?: string
+          description: string
+          id?: string
+          language: string
+          title: string
+        }
+        Update: {
+          bulletin_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          language?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulletin_translations_bulletin_id_fkey"
+            columns: ["bulletin_id"]
+            isOneToOne: false
+            referencedRelation: "bulletin_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_logs: {
         Row: {
           ai_response: string

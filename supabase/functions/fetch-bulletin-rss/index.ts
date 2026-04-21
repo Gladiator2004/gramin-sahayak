@@ -27,7 +27,47 @@ const FEEDS: FeedConfig[] = [
 
 const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// Lightweight category classifier from keywords in title/description
+// Image pools per category — rotated via title hash for visual variety
+const IMAGE_POOLS: Record<string, string[]> = {
+  Farmer: [
+    "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c10?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1595855759920-86582396756a?w=600&h=400&fit=crop",
+  ],
+  Worker: [
+    "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1513828583688-c52646db42da?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1590650153855-d9e808231d41?w=600&h=400&fit=crop",
+  ],
+  General: [
+    "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=600&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1577495508326-19a1b3cf65b7?w=600&h=400&fit=crop",
+  ],
+};
+
+function hashTitle(title: string): number {
+  let h = 0;
+  for (let i = 0; i < title.length; i++) {
+    h = ((h << 5) - h + title.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function getRotatedImage(category: string, title: string): string {
+  const pool = IMAGE_POOLS[category] || IMAGE_POOLS.General;
+  return pool[hashTitle(title) % pool.length];
+}
+
 function classify(text: string, fallback: "Farmer" | "Worker" | "General"): "Farmer" | "Worker" | "General" {
   const t = text.toLowerCase();
   if (/farmer|kisan|crop|agricultur|fertiliz|soil|irrigation|seed|paddy|wheat|fpo|mandi|fishery|dairy|cattle|livestock|horticult/.test(t)) return "Farmer";
@@ -35,12 +75,10 @@ function classify(text: string, fallback: "Farmer" | "Worker" | "General"): "Far
   return fallback;
 }
 
-// Strip HTML tags
 function stripHtml(s: string): string {
   return s.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
 }
 
-// Naive but reliable RSS parser (no XML lib in Deno edge runtime)
 function parseRss(xml: string, feed: FeedConfig) {
   const items: Array<{ title: string; description: string; link: string; guid: string; pubDate: string }> = [];
   const itemRegex = /<item[\s\S]*?<\/item>/gi;
@@ -97,15 +135,8 @@ Deno.serve(async (req) => {
   const timeout = setTimeout(() => controller.abort(), 20000);
 
   try {
-    // Fetch all feeds in parallel
     const results = await Promise.all(FEEDS.map((f) => fetchFeedSafe(f, controller.signal)));
     clearTimeout(timeout);
-
-    const fallbackImages = {
-      Farmer: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=600&h=400&fit=crop",
-      Worker: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=600&h=400&fit=crop",
-      General: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=600&h=400&fit=crop",
-    };
 
     const rows: Array<Record<string, unknown>> = [];
     const seenGuids = new Set<string>();
@@ -126,7 +157,7 @@ Deno.serve(async (req) => {
           category,
           source: it._feed.source,
           source_url: it.link || null,
-          image_url: fallbackImages[category],
+          image_url: getRotatedImage(category, it.title),
           publish_date: isNaN(publishDate.getTime()) ? new Date().toISOString() : publishDate.toISOString(),
           rss_guid: guid,
           last_fetched_at: new Date().toISOString(),
@@ -140,7 +171,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Upsert in chunks (ON CONFLICT skip duplicates by rss_guid)
     const chunkSize = 50;
     let inserted = 0;
     for (let i = 0; i < rows.length; i += chunkSize) {
