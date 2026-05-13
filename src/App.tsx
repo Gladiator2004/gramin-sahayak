@@ -60,7 +60,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename="/gramin-sahayak/">
         <LanguageProvider>
           <UserProfileProvider>
             <AppContent />
