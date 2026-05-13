@@ -57,24 +57,20 @@ const BulletinBoard = () => {
 
     // Request translations for dynamic items that don't have them yet
     if (language !== "en") {
-      const dynamicAll = result.items.filter(
-        (i) => i.isDynamic && !i.staticItem && typeof i.id === "string"
+      const untranslated = result.items.filter(
+        (i) => i.isDynamic && !i.staticItem && !i.translatedTitle && typeof i.id === "string"
       );
-      const untranslated = dynamicAll.filter((i) => !i.translatedTitle);
       if (untranslated.length > 0) {
-        const translations = await requestTranslations(
-          dynamicAll.map((i) => ({ id: i.id as string, title: i.title, description: i.description })),
+        requestTranslations(
+          untranslated.map((i) => ({ id: i.id as string, title: i.title, description: i.description })),
           language
-        );
-        if (translations.size > 0) {
-          setItems((prev) =>
-            prev.map((it) => {
-              if (typeof it.id !== "string") return it;
-              const tr = translations.get(it.id);
-              return tr ? { ...it, translatedTitle: tr.title, translatedDescription: tr.description } : it;
-            })
-          );
-        }
+        ).then(() => {
+          // Reload after translations are cached
+          getBulletinPage(p, ITEMS_PER_PAGE, cat, profile?.role, language).then((fresh) => {
+            setItems(fresh.items);
+            setTotal(fresh.total);
+          });
+        });
       }
     }
   };

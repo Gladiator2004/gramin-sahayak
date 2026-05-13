@@ -87,31 +87,21 @@ async function fetchTranslations(
   return map;
 }
 
-// Request translations for dynamic items. Returns a map of id -> translation
-// so callers can apply them immediately without re-fetching.
+// Fire-and-forget: request translations for dynamic items not yet cached
 export async function requestTranslations(
   items: Array<{ id: string; title: string; description: string }>,
   language: string
-): Promise<Map<string, { title: string; description: string }>> {
-  const result = new Map<string, { title: string; description: string }>();
-  if (!items.length || language === "en") return result;
+): Promise<void> {
+  if (!items.length || language === "en") return;
   try {
-    const { data, error } = await supabase.functions.invoke("translate-bulletin", {
+    await supabase.functions.invoke("translate-bulletin", {
       body: { items, language },
     });
-    if (error) {
-      console.warn("Translation request failed:", error);
-      return result;
-    }
-    const translations: Array<{ bulletin_id: string; title: string; description: string }> =
-      data?.translations || [];
-    for (const t of translations) {
-      result.set(t.bulletin_id, { title: t.title, description: t.description });
-    }
+    // Invalidate cache so next read pulls fresh translations
+    try { localStorage.removeItem("gs-cache:" + CACHE_KEY); } catch {}
   } catch (e) {
     console.warn("Translation request failed:", e);
   }
-  return result;
 }
 
 // Returns paginated bulletin items with translations merged
