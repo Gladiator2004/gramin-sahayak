@@ -87,21 +87,36 @@ async function fetchTranslations(
   return map;
 }
 
-// Fire-and-forget: request translations for dynamic items not yet cached
+// Request translations for dynamic items and return them immediately.
 export async function requestTranslations(
   items: Array<{ id: string; title: string; description: string }>,
   language: string
-): Promise<void> {
-  if (!items.length || language === "en") return;
+): Promise<Map<string, { title: string; description: string }>> {
+  const map = new Map<string, { title: string; description: string }>();
+  if (!items.length || language === "en") return map;
   try {
-    await supabase.functions.invoke("translate-bulletin", {
+    const { data, error } = await supabase.functions.invoke("translate-bulletin", {
       body: { items, language },
     });
+    if (error) throw error;
+
+    const rows = Array.isArray(data?.items) ? data.items : [];
+    for (const row of rows) {
+      if (row?.id && row?.title) {
+        map.set(row.id, {
+          title: row.title,
+          description: row.description || "",
+        });
+      }
+    }
+
     // Invalidate cache so next read pulls fresh translations
     try { localStorage.removeItem("gs-cache:" + CACHE_KEY); } catch {}
   } catch (e) {
     console.warn("Translation request failed:", e);
   }
+
+  return map;
 }
 
 // Returns paginated bulletin items with translations merged

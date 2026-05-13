@@ -2,7 +2,7 @@
  * BulletinBoard — Government scheme feed with filters, pagination, and detail modal
  * Now backed by live data from bulletin_items DB table + RSS feeds with translation support
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { NewsItem } from "@/data/api";
 import BulletinCard from "./BulletinCard";
 import SchemeDetailModal from "./SchemeDetailModal";
@@ -45,12 +45,16 @@ const BulletinBoard = () => {
   const [selected, setSelected] = useState<BulletinItem | null>(null);
   const { t, language } = useLanguage();
   const { profile } = useUserProfile();
+  const latestRequestRef = useRef(0);
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   const loadPage = async (p: number, cat: CategoryFilter, showSpinner = true) => {
+    const requestId = ++latestRequestRef.current;
     if (showSpinner) setLoading(true);
     const result = await getBulletinPage(p, ITEMS_PER_PAGE, cat, profile?.role, language);
+    if (requestId !== latestRequestRef.current) return;
+
     setItems(result.items);
     setTotal(result.total);
     setLoading(false);
@@ -61,16 +65,22 @@ const BulletinBoard = () => {
         (i) => i.isDynamic && !i.staticItem && !i.translatedTitle && typeof i.id === "string"
       );
       if (untranslated.length > 0) {
-        requestTranslations(
+        const translations = await requestTranslations(
           untranslated.map((i) => ({ id: i.id as string, title: i.title, description: i.description })),
           language
-        ).then(() => {
-          // Reload after translations are cached
-          getBulletinPage(p, ITEMS_PER_PAGE, cat, profile?.role, language).then((fresh) => {
-            setItems(fresh.items);
-            setTotal(fresh.total);
-          });
-        });
+        );
+
+        if (requestId !== latestRequestRef.current || translations.size === 0) return;
+
+        setItems((prev) =>
+          prev.map((item) => {
+            if (!item.isDynamic || typeof item.id !== "string") return item;
+            const tr = translations.get(item.id);
+            return tr
+              ? { ...item, translatedTitle: tr.title, translatedDescription: tr.description }
+              : item;
+          })
+        );
       }
     }
   };

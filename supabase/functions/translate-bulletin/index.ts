@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     };
 
     if (!items?.length || !language || language === "en") {
-      return new Response(JSON.stringify({ translated: 0 }), {
+      return new Response(JSON.stringify({ translated: 0, items: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -56,7 +56,21 @@ Deno.serve(async (req) => {
     const toTranslate = items.filter((i) => !existingIds.has(i.id));
 
     if (toTranslate.length === 0) {
-      return new Response(JSON.stringify({ translated: 0, skipped: items.length }), {
+      const { data: cachedRows } = await supabase
+        .from("bulletin_translations")
+        .select("bulletin_id, title, description")
+        .in("bulletin_id", ids)
+        .eq("language", language);
+
+      return new Response(JSON.stringify({
+        translated: 0,
+        skipped: items.length,
+        items: (cachedRows || []).map((row) => ({
+          id: row.bulletin_id,
+          title: row.title,
+          description: row.description || "",
+        })),
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -127,7 +141,15 @@ ${JSON.stringify(batch.map((b) => ({ id: b.id, title: b.title, description: b.de
       if (error) console.error("Translation upsert error:", error);
     }
 
-    return new Response(JSON.stringify({ translated: rows.length, total: batch.length }), {
+    return new Response(JSON.stringify({
+      translated: rows.length,
+      total: batch.length,
+      items: rows.map((row) => ({
+        id: row.bulletin_id,
+        title: row.title,
+        description: row.description || "",
+      })),
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
