@@ -2,7 +2,12 @@
  * GraminLogo — SVG logo component for Gramin Sahayak
  * Green + saffron gradient with hands-holding-crop icon
  */
+import { useLanguage } from "@/i18n/LanguageContext";
+import type { TranslationKey } from "@/i18n/translations";
+
 const GraminLogo = ({ size = 40, showText = false }: { size?: number; showText?: boolean }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="flex items-center gap-2.5">
       <svg
@@ -80,7 +85,7 @@ const GraminLogo = ({ size = 40, showText = false }: { size?: number; showText?:
             Gramin Sahayak
           </span>
           <span className="text-[10px] font-medium text-primary-foreground/70 tracking-wide uppercase">
-            Rural Digital Assistant
+            {t("appSubtitle" as TranslationKey)}
           </span>
         </div>
       )}

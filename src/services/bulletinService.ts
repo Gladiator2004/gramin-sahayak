@@ -87,31 +87,36 @@ async function fetchTranslations(
   return map;
 }
 
-// Request translations for dynamic items. Returns a map of id -> translation
-// so callers can apply them immediately without re-fetching.
+// Request translations for dynamic items and return them immediately.
 export async function requestTranslations(
   items: Array<{ id: string; title: string; description: string }>,
   language: string
 ): Promise<Map<string, { title: string; description: string }>> {
-  const result = new Map<string, { title: string; description: string }>();
-  if (!items.length || language === "en") return result;
+  const map = new Map<string, { title: string; description: string }>();
+  if (!items.length || language === "en") return map;
   try {
     const { data, error } = await supabase.functions.invoke("translate-bulletin", {
       body: { items, language },
     });
-    if (error) {
-      console.warn("Translation request failed:", error);
-      return result;
+    if (error) throw error;
+
+    const rows = Array.isArray(data?.items) ? data.items : [];
+    for (const row of rows) {
+      if (row?.id && row?.title) {
+        map.set(row.id, {
+          title: row.title,
+          description: row.description || "",
+        });
+      }
     }
-    const translations: Array<{ bulletin_id: string; title: string; description: string }> =
-      data?.translations || [];
-    for (const t of translations) {
-      result.set(t.bulletin_id, { title: t.title, description: t.description });
-    }
+
+    // Invalidate cache so next read pulls fresh translations
+    try { localStorage.removeItem("gs-cache:" + CACHE_KEY); } catch {}
   } catch (e) {
     console.warn("Translation request failed:", e);
   }
-  return result;
+
+  return map;
 }
 
 // Returns paginated bulletin items with translations merged

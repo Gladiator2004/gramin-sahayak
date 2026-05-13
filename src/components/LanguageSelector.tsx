@@ -24,7 +24,7 @@ const LanguageSelector = () => {
 
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-extrabold text-foreground">Gramin Sahayak</h1>
-          <p className="text-sm text-muted-foreground">Rural Digital Assistant</p>
+          <p className="text-sm text-muted-foreground">{t("appSubtitle" as TranslationKey)}</p>
         </div>
 
         <div className="w-full space-y-2">

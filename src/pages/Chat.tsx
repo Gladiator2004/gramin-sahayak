@@ -282,7 +282,7 @@ const Chat = () => {
                   ? "bg-primary-foreground/30 text-primary-foreground"
                   : "bg-primary-foreground/10 text-primary-foreground/60"
               }`}
-              title={voice.voiceEnabled ? "Voice ON" : "Voice OFF"}
+              title={voice.voiceEnabled ? t("voiceOn" as TranslationKey) : t("voiceOff" as TranslationKey)}
             >
               {voice.voiceEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
             </button>
@@ -348,7 +348,7 @@ const Chat = () => {
                   ? "bg-destructive text-destructive-foreground animate-pulse shadow-lg"
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
-              title={voice.isListening ? "Stop listening" : "Speak"}
+              title={voice.isListening ? t("stopListening" as TranslationKey) : t("speak" as TranslationKey)}
             >
               {voice.isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </button>

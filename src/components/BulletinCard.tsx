@@ -75,7 +75,7 @@ const BulletinCard = ({ item, index, onClick, isDynamic = false }: BulletinCardP
           {isDynamic && (
             <span className="inline-flex items-center gap-1 rounded-full bg-destructive/90 px-2 py-0.5 text-[10px] font-bold text-destructive-foreground shadow-md">
               <Radio className="h-2.5 w-2.5 animate-pulse" />
-              LIVE
+              {t("liveBadge" as TranslationKey)}
             </span>
           )}
           {isNew && !isDynamic && (
